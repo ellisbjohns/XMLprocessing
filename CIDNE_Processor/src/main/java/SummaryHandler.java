@@ -1,7 +1,6 @@
 import org.xml.sax.helpers.DefaultHandler;
 import org.xml.sax.*;
 
-import javax.xml.stream.events.Characters;
 import java.io.FileWriter;
 import java.util.Random;
 
@@ -20,14 +19,26 @@ public class SummaryHandler extends DefaultHandler {
     int numberLines = 0;
     String indentation = "";
     int MAX_LINES = 1000;
-    int MAX_FILES = 50000;
+    int MAX_FILES = 500000;
     String END_TAG = "OperationsSIGACT";
-    boolean addWTI_Field= false;
+    boolean addWTI_Field= false; //a flag used to determine if WTI text will be included in the file output
+    boolean WTI_FieldLexiconMatch =false;  //used to determine if a Lexion match was found in the Summary Text
     boolean isSummaryField = false;
     boolean writeElement = false; //flag used to dictate if xml elements should be written or not.  Each
     //encounter w/ a start element will reset the flag to true;
+    boolean isLatitudeField=false;
+    boolean isLongitudeField=false;
     Random random = new Random();
     char[] prevChars;
+
+    boolean latFilter = false;
+    boolean lonFilter = false;
+
+    //constants for afganistan locale
+    double MAX_LAT= 38.535;
+    double MIN_LAT= 29.376;
+    double MAX_LON= 74.9457;
+    double MIN_LON= 60.872;
 
     WTI_Text WTI_text = null;
 
@@ -68,8 +79,8 @@ public class SummaryHandler extends DefaultHandler {
 
 
 
-
-
+        isLatitudeField = qualifiedName.equals("Latitude");
+        isLongitudeField = qualifiedName.equals("Longitude");
         isSummaryField = qualifiedName.equals("Summary");
 
         //if HostNationKIA field then chage character data to a random integer between 0 and 4
@@ -97,6 +108,7 @@ public class SummaryHandler extends DefaultHandler {
 
 
 
+
     }
 
     public void endElement(String uri, String localName,
@@ -111,7 +123,7 @@ public class SummaryHandler extends DefaultHandler {
             numberLines++;
         }
 
-        if (addWTI_Field && isSummaryField ) {
+        if (addWTI_Field && isSummaryField && WTI_FieldLexiconMatch) {
 
             startElement("", "WTI", "WTI", null);
             startElement("", "MainCharge", "MainCharge", null);
@@ -191,17 +203,39 @@ public class SummaryHandler extends DefaultHandler {
 
             if (writeElement) {
                 displayText[numberLines] = indentation;
-                displayText[numberLines] += characterData;
+                if (isSummaryField)
+                {
+                    displayText[numberLines] += "<![CDATA["+characterData + "]]>";
+                }
+                else
+                {
+                    displayText[numberLines] += characterData;
+                }
                 numberLines++;
             }
             if (isSummaryField)
             {
-                //WTI_text = LexiconSearch.match(characterData);  //uncomment this to add WTI_text
-                addWTI_Field= WTI_text !=null;
+                WTI_text = LexiconSearch.match(characterData);
+                WTI_FieldLexiconMatch = WTI_text !=null;
+
 
 
             }
-        }
+            if (isLatitudeField)
+            {
+                latFilter= (LocaleFilter.matchLat(MIN_LAT,MAX_LAT,characterData));
+
+
+            }
+
+            if (isLongitudeField)
+            {
+                lonFilter= (LocaleFilter.matchLon(MIN_LON,MAX_LON,characterData));
+
+
+            }
+
+                    }
     }
 
 
@@ -210,19 +244,24 @@ public class SummaryHandler extends DefaultHandler {
         }
 
 
+
+
     public void writeXML_file(String fileName)
     {
         try {
+//            if (addWTI_Field && latFilter && lonFilter) {
+            if (latFilter && lonFilter) {
+                FileWriter filewriter = new FileWriter(fileName + "icews1out" + writeIndex + ".xml");
+                for (int loopIndex = 0; loopIndex < numberLines; loopIndex++) {
+                    filewriter.write(displayText[loopIndex].toCharArray());
+                    filewriter.write('\n');
 
-            FileWriter filewriter = new FileWriter(fileName +"icews1out" + writeIndex + ".xml");
-            for(int loopIndex = 0; loopIndex < numberLines; loopIndex++){
-                filewriter.write(displayText[loopIndex].toCharArray());
-                filewriter.write('\n');
-
-                System.out.println(displayText[loopIndex].toString());
+                    System.out.println(displayText[loopIndex].toString());
+                }
+                filewriter.close();
+                writeIndex++;
             }
-            filewriter.close();
-            writeIndex++;
+
             if (writeIndex > MAX_FILES)
             {
 
@@ -240,6 +279,12 @@ public class SummaryHandler extends DefaultHandler {
     public String[] getDisplayText() {
         return displayText;
     }
+
+    public int getWriteIndex()
+    {
+        return writeIndex;
+    }
+
 
 
 

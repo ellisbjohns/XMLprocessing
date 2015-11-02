@@ -1,7 +1,7 @@
 import javax.xml.parsers.*;
 
 import java.io.File;
-
+import java.util.List;
 
 
 /**
@@ -12,30 +12,53 @@ import java.io.File;
  */
 
 public class Processor {
-    public static void main(String[] args) {
-        String filename = "/home/ejohns/icews1.xml";
-        String writeLocation = "/home/ejohns/xmlRecords2/";
 
+    static String fileName = "//home/ejohns/Work/CINDE_DataTranslation/icews1.xml";
+    static String directoryName = "/home/ejohns/Work/CINDE_DataTranslation/OrbisRecords/xmlRecords2/";
+    static String writeLocation = "/home/ejohns/CIDNE_ORBIS_AFGHAN/";
+    static Boolean isDirectory = false;
+    static int writeIndex=0;
+    public static void main(String[] args)
+    {
 
-
-
-            try {
-                File inputFile = new File(filename);
-                SAXParserFactory factory =
-                        SAXParserFactory.newInstance();
-                SummaryHandler Handler = new SummaryHandler(writeLocation);
-                SAXParser saxParser = factory.newSAXParser();
-                saxParser.parse(inputFile, Handler);
-
-                Handler.writeXML_file(writeLocation); //this is included so that any remaining data will be written out to disk
-
-                }
-            catch (Exception e) {
-                e.printStackTrace(System.err);
+            if (isDirectory) for (File file : getFiles(directoryName)) {
+                processFile(file);
             }
+            else
+                processFile(new File(fileName));
+
+        }
+
+
+
+    public static File[] getFiles (String directory)
+
+    {
+        File[] files = new File(directory).listFiles();
+        return files;
+
     }
 
+    public static void processFile(File file)
 
+    {
+
+
+        try {
+        SAXParserFactory factory =
+                SAXParserFactory.newInstance();
+        SummaryHandler Handler = new SummaryHandler(writeLocation);
+        SAXParser saxParser = factory.newSAXParser();
+        saxParser.parse(file, Handler);
+
+        Handler.writeXML_file(writeLocation + writeIndex); //this is included so that any remaining data will be written out to disk
+
+        }
+        catch(Exception e){
+            e.printStackTrace(System.err);
+        }
+
+    }
 
 
 
